@@ -49,9 +49,10 @@ def generate_poem_with_openai():
     return response['choices'][0]['message']['content'].strip()
 
 # Clear the screen
-os.system('clear' if os.name == 'posix' else 'cls')
+os.system('clear')
 
 # Display the Poem
+os.system('clear')
 print("Poem-O-Matic-AI by MarioTheMaker\n")
 poem = generate_poem_with_openai()
 print(poem + "\n")
