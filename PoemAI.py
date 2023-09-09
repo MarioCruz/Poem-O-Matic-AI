@@ -38,6 +38,20 @@ def generate_poem_with_openai():
     wildcard_choice = get_user_choice(wildcards, "Choose a wildcard:")
     poem_style_choice = get_user_choice(poem_styles, "Choose a poem style:")
 
+    # Clear the screen
+    clear_screen()
+
+    # Display the user's choices
+    print("Your Choices:")
+    print(f"Color: {color_choice}")
+    print(f"Location: {location_choice}")
+    print(f"Feeling: {feeling_choice}")
+    print(f"Wildcard: {wildcard_choice}")
+    print(f"Poem Style: {poem_style_choice}\n")
+
+    # Inform the user the poem is being generated
+    print("Generating poem...\n")
+
     # Create the prompt
     prompt = (f"Write a {poem_style_choice} about {location_choice} with themes of {color_choice}, "
              f"{feeling_choice}, and {wildcard_choice}.")
