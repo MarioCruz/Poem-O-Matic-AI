@@ -48,7 +48,10 @@ def generate_poem_with_openai():
     response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
     return response['choices'][0]['message']['content'].strip()
 
-# Test
-os.system('clear' if os.name == 'posix' else 'cls')  # Clear terminal for both UNIX and Windows
+# Clear the screen
+os.system('clear' if os.name == 'posix' else 'cls')
+
+# Display the Poem
+print("Poem-O-Matic-AI by MarioTheMaker\n")
 poem = generate_poem_with_openai()
-print("\n" + poem + "\n")
+print(poem + "\n")
