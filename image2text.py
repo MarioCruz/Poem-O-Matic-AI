@@ -1,68 +1,70 @@
 import requests
 import cv2
-import json
+import os
+import openai
 import time
 
 # Azure setup
-API_KEY = 'xxxxxxxx'  # Remember to secure this better
-ENDPOINT = 'AzureEndpoint'
+API_KEY = os.getenv('AZURE_API_KEY')
+ENDPOINT = 'https://?E-to-text.cognitiveservices.azure.com/'
 DESCRIBE_URL = f'{ENDPOINT}/vision/v3.1/describe'
 ANALYZE_URL = f'{ENDPOINT}/vision/v3.1/analyze'
-
-# Capture image using OpenCV
-cam = cv2.VideoCapture(0)
-time.sleep(2)  # waits for 2 seconds
-ret, frame = cam.read()
-cam.release()
-
-if not ret:
-    print("Failed to grab frame from camera. Check camera availability.")
-    exit()
-
-img_path = "captured_image.jpg"
-cv2.imwrite(img_path, frame)
 
 headers = {
     'Ocp-Apim-Subscription-Key': API_KEY,
     'Content-Type': 'application/octet-stream'
 }
 
-# Get descriptions
-params_describe = {
-    'maxCandidates': '5',
-    'language': 'en'
-}
+# Initialize OpenAI
+openai.api_key = os.getenv('OPENAI_API_KEY')
 
-with open(img_path, 'rb') as f:
-    response = requests.post(DESCRIBE_URL, headers=headers, params=params_describe, data=f.read())
+def capture_image():
+    cam = cv2.VideoCapture(0)
+    time.sleep(2)
+    ret, frame = cam.read()
+    cam.release()
+    return ret, frame
 
-response_data = response.json()
+def send_image_to_azure(url, image):
+    _, img_encoded = cv2.imencode('.jpg', image)
+    response = requests.post(url, headers=headers, data=img_encoded.tobytes())
+    return response.json()
 
-# Extract and print description from the response
-if 'description' in response_data:
-    captions = response_data['description']['captions']
-    for caption in captions:
-        print(caption['text'], "- Confidence:", caption['confidence'])
-else:
-    print(json.dumps(response_data, indent=4))
+def create_poem(description):
+    prompt = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": f"Write a poem inspired by the image description: {description}"}
+    ]
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=prompt
+    )
+    return response['choices'][0]['message']['content']
 
-# Get color information
-params_analyze = {
-    'visualFeatures': 'Color',
-    'language': 'en'
-}
+if __name__ == "__main__":
+    success, captured_img = capture_image()
+    if not success:
+        print("Failed to grab frame from camera. Check camera availability.")
+        exit()
 
-with open(img_path, 'rb') as f:
-    response = requests.post(ANALYZE_URL, headers=headers, params=params_analyze, data=f.read())
+    # Get description
+    response_data = send_image_to_azure(DESCRIBE_URL, captured_img)
+    primary_description = ""
+    if 'description' in response_data and response_data['description']['captions']:
+        primary_description = response_data['description']['captions'][0]['text']
 
-response_data = response.json()
+    if primary_description:
+        print("Image Description:", primary_description)
 
-# Extract and print color information from the response
-if 'color' in response_data:
-    dominant_color_foreground = response_data['color']['dominantColorForeground']
-    dominant_colors = response_data['color']['dominantColors']
+        poem = create_poem(primary_description)
+        print("\nGenerated Poem:\n", poem)
 
-    print(f"\nDominant Foreground Color: {dominant_color_foreground}")
-    print("Dominant Colors:", ", ".join(dominant_colors))
-else:
-    print(json.dumps(response_data, indent=4))
+        # Get color analysis
+        response_data = send_image_to_azure(ANALYZE_URL, captured_img)
+        if 'color' in response_data:
+            dominant_color_foreground = response_data['color']['dominantColorForeground']
+            dominant_colors = response_data['color']['dominantColors']
+            print(f"\nDominant Foreground Color: {dominant_color_foreground}")
+            print("Dominant Colors:", ", ".join(dominant_colors))
+    else:
+        print("Couldn't retrieve a description for the image.")
