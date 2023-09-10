@@ -64,6 +64,7 @@ def create_poem(description, tags):
     prompt = [
         {"role": "system", "content": "You are a poetic muse, able to capture the vibrant spirit and allure of Miami with your words. From the radiant sunsets over Biscayne Bay to the lively rhythms of Little Havana, Miami's essence flows through your verses."},
         {"role": "system", "content": "Remember to immerse the reader in Miami's unique atmosphere and culture."},
+         {"role": "system", "content": "in the style of a sonnet"},
         {"role": "user", "content": f"Write a poem based on the image description: {description}.{context_info}"}
     ]
 
