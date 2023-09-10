@@ -21,7 +21,7 @@ headers = {
 openai.api_key = os.getenv('OPENAI_API_KEY')
 
 # Set up Google's Text-to-Speech credentials
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "path_to_your_google_cred.json"
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "poem-0-matic-b9f292c4f549.json"
 
 def clear_screen():
     system_name = platform.system().lower()
@@ -60,17 +60,8 @@ def analyze_image_with_azure(url, image, params):
         print(f"Error occurred: {e}")
     return {}
 
-def create_poem(description, dominant_color, tags, faces):
-    tag_context = ", ".join(tags[:3])  # Taking the first 3 tags for brevity
-
-    face_context = ""
-    if faces:
-        ages = [face['age'] for face in faces if 'age' in face]  # Only get age if the 'age' attribute exists
-        if ages:
-            avg_age = sum(ages) / len(ages)
-            face_context = f"There {'are' if len(faces) > 1 else 'is'} {len(faces)} person{'s' if len(faces) > 1 else ''} with an average age of about {avg_age:.0f} years."
-
-    context_info = f"The dominant color in the image is {dominant_color}. The image is reminiscent of {tag_context}. {face_context}"
+def create_poem(description, dominant_color):
+    context_info = f"The dominant color in the image is {dominant_color}."
 
     prompt = [
         {"role": "system", "content": "You are a poetic muse, able to capture the vibrant spirit and allure of Miami with your words."},
@@ -95,7 +86,7 @@ def create_poem(description, dominant_color, tags, faces):
 def speak_text_google(text, pause_before=False):
     if pause_before:
         time.sleep(3)
-
+        
     client = texttospeech.TextToSpeechClient()
     synthesis_input = texttospeech.SynthesisInput(text=text)
     voice = texttospeech.VoiceSelectionParams(
@@ -111,35 +102,47 @@ def speak_text_google(text, pause_before=False):
     os.remove("output.mp3")
 
 if __name__ == "__main__":
-    clear_screen()
-    print("Poem-O-Matic is ready!")
-    input("Press enter to capture an image and generate a poem...")
+    try:
+        clear_screen()
 
-    success, captured_img = capture_image()
-    if not success:
-        print("Failed to capture an image.")
-        exit()
+        if not API_KEY:
+            print("Azure API key not found. Ensure the AZURE_API_KEY environment variable is set.")
+            exit()
 
-    analysis_params = {
-        'visualFeatures': 'Color,Tags,Faces'
-    }
-    response_data = analyze_image_with_azure(ANALYZE_URL, captured_img, analysis_params)
-    dominant_color = response_data.get('color', {}).get('dominantColorForeground')
-    image_tags = [tag['name'] for tag in response_data.get('tags', [])]
-    faces_info = response_data.get('faces', [])
+        if not openai.api_key:
+            print("OpenAI API key not found. Ensure the OPENAI_API_KEY environment variable is set.")
+            exit()
 
-    description_data = analyze_image_with_azure(DESCRIBE_URL, captured_img, {'maxCandidates': 1})
-    primary_description = description_data.get('description', {}).get('captions', [{}])[0].get('text', None)
+        success, captured_img = capture_image()
+        if not success:
+            print("Failed to grab frame from camera. Check camera availability.")
+            exit()
 
-    if primary_description:
-        print("Image Description:", primary_description)
-        poem = create_poem(primary_description, dominant_color, image_tags, faces_info)
-        print("\n" + poem)
+        # Analyze image for dominant color
+        analysis_params = {
+            'visualFeatures': 'Color'
+        }
+        response_data = analyze_image_with_azure(ANALYZE_URL, captured_img, analysis_params)
+        dominant_color = response_data.get('color', {}).get('dominantColorForeground', "")
 
-        speak_text_google(poem)
+        # Get description and tags
+        description_data = analyze_image_with_azure(DESCRIBE_URL, captured_img, {})
+        primary_description = description_data.get('description', {}).get('captions', [{}])[0].get('text', "")
 
-        sign_off = "Poem Created by Poem-O-Matic-AI by Mario The Maker for O'Miami festival"
-        print(sign_off)
-        speak_text_google(sign_off, pause_before=True)
-    else:
-        print("Couldn't retrieve a description for the image.")
+        if primary_description:
+            print("Image Description:", primary_description)
+            poem = create_poem(primary_description, dominant_color)
+            print("\n" + poem)
+            
+            # Speak out the poem
+            speak_text_google(poem)
+
+            sign_off = "Poem Created by Poem-O-Matic-AI by Mario The Maker for O'Miami festival"
+            print(sign_off)
+            
+            # Speak out the sign off after a 3-second pause
+            speak_text_google(sign_off, pause_before=True)
+        else:
+            print("Couldn't retrieve a description for the image.")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
