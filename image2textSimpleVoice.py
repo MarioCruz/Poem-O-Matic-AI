@@ -39,16 +39,24 @@ def capture_image():
         print("Error initializing camera. Please check if it's connected and retry.")
         return False, None
 
-    time.sleep(2)
-    ret, frame = cam.read()
-    cam.release()
+    print("Position yourself in front of the camera.")
+    print("Press 'Enter' when you're ready to capture the image.")
+    while True:
+        # Capture frame-by-frame
+        ret, frame = cam.read()
 
-    if ret:
-        cv2.imshow('Captured Image', frame)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        # Display the live frame
+        cv2.imshow('Camera Feed - Press ENTER to Capture', frame)
+
+        # Check for user input to capture the frame
+        if cv2.waitKey(1) & 0xFF == 13:  # 13 is the Enter Key
+            break
+
+    cam.release()
+    cv2.destroyAllWindows()
 
     return ret, frame
+
 
 
 def analyze_image_with_azure(url, image, params):
